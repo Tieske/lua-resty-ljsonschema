@@ -1086,7 +1086,8 @@ local _M = {
   -- attempted coerced to the proper type. After which the validation will occur.
   -- @tparam[opt="anonymous"] string custom.name the name assigned to the validator function, it might ease debugging as
   -- as it will appear in stack traces.
-  -- @return function The validator function, or `nil + error` if the code couldn't be generated
+  -- @return function The validator function
+  -- @raise if the code can't be generated
   generate_validator = function(schema, custom)
     local array_mt = default_array_mt
     if custom and custom.array_mt ~= nil then
@@ -1108,7 +1109,8 @@ local _M = {
   -- return the generated code as a string instead of a compiled function.
   -- @tparam table schema The JSONschema to validate
   -- @tparam[opt] table custom Options table to customize the validator, see `generate_validator` for the options.
-  -- @return string The validator code, or `nil + error` if the code couldn't be generated
+  -- @return string The validator code
+  -- @raise if the code can't be generated
   generate_validator_code = function(schema, custom)
     return generate_main_validator_ctx(schema, custom):as_string()
   end,
