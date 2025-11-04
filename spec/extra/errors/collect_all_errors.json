@@ -1,0 +1,317 @@
+[
+    {
+        "description": "multiple property errors",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "age": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "email": {
+                    "type": "string",
+                    "pattern": "^[^@]+@[^@]+$"
+                }
+            },
+            "required": ["name", "age"]
+        },
+        "tests": [
+            {
+                "description": "multiple validation errors",
+                "data": {
+                    "name": "ab",
+                    "age": -5,
+                    "email": "invalid"
+                },
+                "valid": false,
+                "error": {
+                    "parts": [
+                        "property email validation failed: failed to match pattern ^[^@]+@[^@]+$ with \"invalid\"",
+                        "property name validation failed: string too short, expected at least 3, got 2",
+                        "property age validation failed: expected -5 to be greater than 0"
+                    ]
+                }
+            },
+            {
+                "description": "missing required and invalid values",
+                "data": {
+                    "name": "x"
+                },
+                "valid": false,
+                "error": {
+                    "parts": [
+                        "property name validation failed: string too short, expected at least 3, got 1",
+                        "property age is required"
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "description": "array validation errors",
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 2
+            },
+            "minItems": 2,
+            "maxItems": 5,
+            "uniqueItems": true
+        },
+        "tests": [
+            {
+                "description": "multiple item errors and duplicate",
+                "data": ["a", "b", "a"],
+                "valid": false,
+                "error": "failed to validate item 1: string too short, expected at least 2, got 1; failed to validate item 2: string too short, expected at least 2, got 1; failed to validate item 3: string too short, expected at least 2, got 1; expected unique items but items 3 and 1 are equal"
+            },
+            {
+                "description": "too many items",
+                "data": ["aa", "bb", "cc", "dd", "ee", "ff"],
+                "valid": false,
+                "error": "expect array to have at most 5 items"
+            }
+        ]
+    },
+    {
+        "description": "string validation errors",
+        "schema": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 10,
+            "pattern": "^[A-Z]+$"
+        },
+        "tests": [
+            {
+                "description": "multiple string constraint violations",
+                "data": "abc",
+                "valid": false,
+                "error": "string too short, expected at least 5, got 3; failed to match pattern ^[A-Z]+$ with \"abc\""
+            }
+        ]
+    },
+    {
+        "description": "allOf multiple failures",
+        "schema": {
+            "type": "object",
+            "allOf": [
+                {
+                    "required": ["name"]
+                },
+                {
+                    "required": ["age"]
+                },
+                {
+                    "required": ["email"]
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "all allOf schemas fail",
+                "data": {},
+                "valid": false,
+                "error": "allOf 1 failed: property name is required; allOf 2 failed: property age is required; allOf 3 failed: property email is required"
+            }
+        ]
+    },
+    {
+        "description": "number validation errors",
+        "schema": {
+            "type": "number",
+            "minimum": 10,
+            "maximum": 100,
+            "multipleOf": 5
+        },
+        "tests": [
+            {
+                "description": "multiple number constraint violations",
+                "data": 7,
+                "valid": false,
+                "error": "expected 7 to be greater than 10; expected 7 to be a multiple of 5"
+            }
+        ]
+    },
+    {
+        "description": "nested object errors",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "minLength": 2
+                        },
+                        "age": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    "required": ["name", "age"]
+                }
+            },
+            "required": ["user"]
+        },
+        "tests": [
+            {
+                "description": "nested validation errors",
+                "data": {
+                    "user": {
+                        "name": "A",
+                        "age": "invalid"
+                    }
+                },
+                "valid": false,
+                "error": {
+                    "anyOf": [
+                        {
+                            "parts": [
+                                "property user validation failed: property name validation failed: string too short, expected at least 2, got 1",
+                                "property age validation failed: wrong type: expected integer, got string"
+                            ]
+                        },
+                        {
+                            "parts": [
+                                "property user validation failed: property age validation failed: wrong type: expected integer, got string",
+                                "property name validation failed: string too short, expected at least 2, got 1"
+                            ]
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "description": "date-time format no duplicates",
+        "schema": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "tests": [
+            {
+                "description": "invalid date-time",
+                "data": "2023-02-30T25:30:00Z",
+                "valid": false,
+                "error": "expected valid \"date-time\", got \"2023-02-30T25:30:00Z\""
+            }
+        ]
+    },
+    {
+        "description": "date format",
+        "schema": {
+            "type": "string",
+            "format": "date"
+        },
+        "tests": [
+            {
+                "description": "invalid date",
+                "data": "2023-02-30",
+                "valid": false,
+                "error": "expected valid \"date\", got \"2023-02-30\""
+            }
+        ]
+    },
+    {
+        "description": "time format",
+        "schema": {
+            "type": "string",
+            "format": "time"
+        },
+        "tests": [
+            {
+                "description": "invalid time",
+                "data": "25:30:00Z",
+                "valid": false,
+                "error": "expected valid \"time\", got \"25:30:00Z\""
+            }
+        ]
+    },
+    {
+        "description": "combined string validations with format",
+        "schema": {
+            "type": "string",
+            "minLength": 10,
+            "pattern": "^[A-Z]+$",
+            "format": "date"
+        },
+        "tests": [
+            {
+                "description": "fails all string validations",
+                "data": "abc",
+                "valid": false,
+                "error": "string too short, expected at least 10, got 3; failed to match pattern ^[A-Z]+$ with \"abc\"; expected valid \"date\", got \"abc\""
+            }
+        ]
+    },
+    {
+        "description": "dependencies",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "credit_card": {
+                    "type": "string"
+                },
+                "billing_address": {
+                    "type": "string"
+                }
+            },
+            "dependencies": {
+                "credit_card": ["name", "billing_address"]
+            }
+        },
+        "tests": [
+            {
+                "description": "missing multiple dependent properties",
+                "data": {
+                    "credit_card": "1234-5678-9012-3456"
+                },
+                "valid": false,
+                "error": {
+                    "parts": [
+                        "property name is required when credit_card is set",
+                        "property billing_address is required when credit_card is set"
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "description": "additionalProperties",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tests": [
+            {
+                "description": "multiple additional properties forbidden",
+                "data": {
+                    "name": "John",
+                    "age": 30,
+                    "email": "john@example.com"
+                },
+                "valid": false,
+                "error": {
+                    "parts": [
+                        "additional properties forbidden, found email",
+                        "additional properties forbidden, found age"
+                    ]
+                }
+            }
+        ]
+    }
+]
