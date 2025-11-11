@@ -28,13 +28,13 @@
                     "email": "invalid"
                 },
                 "valid": false,
-                "error": {
-                    "parts": [
-                        "property email validation failed: failed to match pattern ^[^@]+@[^@]+$ with \"invalid\"",
-                        "property name validation failed: string too short, expected at least 3, got 2",
-                        "property age validation failed: expected -5 to be greater than 0"
+                "error_entries_anyOf": [
+                    [
+                        {"schema_path": "/properties/email", "error": "failed to match pattern ^[^@]+@[^@]+$ with \"invalid\""},
+                        {"schema_path": "/properties/name", "error": "string too short, expected at least 3, got 2"},
+                        {"schema_path": "/properties/age", "error": "expected -5 to be greater than 0"}
                     ]
-                }
+                ]
             },
             {
                 "description": "missing required and invalid values",
@@ -42,12 +42,10 @@
                     "name": "x"
                 },
                 "valid": false,
-                "error": {
-                    "parts": [
-                        "property name validation failed: string too short, expected at least 3, got 1",
-                        "property age is required"
-                    ]
-                }
+                "error_entries": [
+                    {"schema_path": "/properties/name", "error": "string too short, expected at least 3, got 1"},
+                    {"schema_path": "/required", "error": "property age is required"}
+                ]
             }
         ]
     },
@@ -68,13 +66,20 @@
                 "description": "multiple item errors and duplicate",
                 "data": ["a", "b", "a"],
                 "valid": false,
-                "error": "failed to validate item 1: string too short, expected at least 2, got 1; failed to validate item 2: string too short, expected at least 2, got 1; failed to validate item 3: string too short, expected at least 2, got 1; expected unique items but items 3 and 1 are equal"
+                "error_entries": [
+                    {"schema_path": "/items", "error": "failed to validate item 1: string too short, expected at least 2, got 1"},
+                    {"schema_path": "/items", "error": "failed to validate item 2: string too short, expected at least 2, got 1"},
+                    {"schema_path": "/items", "error": "failed to validate item 3: string too short, expected at least 2, got 1"},
+                    {"schema_path": "/uniqueItems", "error": "expected unique items but items 3 and 1 are equal"}
+                ]
             },
             {
                 "description": "too many items",
                 "data": ["aa", "bb", "cc", "dd", "ee", "ff"],
                 "valid": false,
-                "error": "expect array to have at most 5 items"
+                "error_entries": [
+                    {"schema_path": "/maxItems", "error": "expect array to have at most 5 items"}
+                ]
             }
         ]
     },
@@ -91,7 +96,10 @@
                 "description": "multiple string constraint violations",
                 "data": "abc",
                 "valid": false,
-                "error": "string too short, expected at least 5, got 3; failed to match pattern ^[A-Z]+$ with \"abc\""
+                "error_entries": [
+                    {"schema_path": "/minLength", "error": "string too short, expected at least 5, got 3"},
+                    {"schema_path": "/pattern", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""}
+                ]
             }
         ]
     },
@@ -116,7 +124,11 @@
                 "description": "all allOf schemas fail",
                 "data": {},
                 "valid": false,
-                "error": "allOf 1 failed: property name is required; allOf 2 failed: property age is required; allOf 3 failed: property email is required"
+                "error_entries": [
+                    {"schema_path": "/allOf/1", "error": "property name is required"},
+                    {"schema_path": "/allOf/2", "error": "property age is required"},
+                    {"schema_path": "/allOf/3", "error": "property email is required"}
+                ]
             }
         ]
     },
@@ -133,7 +145,10 @@
                 "description": "multiple number constraint violations",
                 "data": 7,
                 "valid": false,
-                "error": "expected 7 to be greater than 10; expected 7 to be a multiple of 5"
+                "error_entries": [
+                    {"schema_path": "/minimum", "error": "expected 7 to be greater than 10"},
+                    {"schema_path": "/multipleOf", "error": "expected 7 to be a multiple of 5"}
+                ]
             }
         ]
     },
@@ -169,22 +184,12 @@
                     }
                 },
                 "valid": false,
-                "error": {
-                    "anyOf": [
-                        {
-                            "parts": [
-                                "property user validation failed: property name validation failed: string too short, expected at least 2, got 1",
-                                "property age validation failed: wrong type: expected integer, got string"
-                            ]
-                        },
-                        {
-                            "parts": [
-                                "property user validation failed: property age validation failed: wrong type: expected integer, got string",
-                                "property name validation failed: string too short, expected at least 2, got 1"
-                            ]
-                        }
+                "error_entries_anyOf": [
+                    [
+                        {"schema_path": "/properties/user/properties/name", "error": "string too short, expected at least 2, got 1"},
+                        {"schema_path": "/properties/user/properties/age/type", "error": "wrong type: expected integer, got string"}
                     ]
-                }
+                ]
             }
         ]
     },
@@ -199,7 +204,9 @@
                 "description": "invalid date-time",
                 "data": "2023-02-30T25:30:00Z",
                 "valid": false,
-                "error": "expected valid \"date-time\", got \"2023-02-30T25:30:00Z\""
+                "error_entries": [
+                    {"schema_path": "/format", "error": "expected valid \"date-time\", got \"2023-02-30T25:30:00Z\""}
+                ]
             }
         ]
     },
@@ -214,7 +221,9 @@
                 "description": "invalid date",
                 "data": "2023-02-30",
                 "valid": false,
-                "error": "expected valid \"date\", got \"2023-02-30\""
+                "error_entries": [
+                    {"schema_path": "/format", "error": "expected valid \"date\", got \"2023-02-30\""}
+                ]
             }
         ]
     },
@@ -229,7 +238,9 @@
                 "description": "invalid time",
                 "data": "25:30:00Z",
                 "valid": false,
-                "error": "expected valid \"time\", got \"25:30:00Z\""
+                "error_entries": [
+                    {"schema_path": "/format", "error": "expected valid \"time\", got \"25:30:00Z\""}
+                ]
             }
         ]
     },
@@ -246,7 +257,11 @@
                 "description": "fails all string validations",
                 "data": "abc",
                 "valid": false,
-                "error": "string too short, expected at least 10, got 3; failed to match pattern ^[A-Z]+$ with \"abc\"; expected valid \"date\", got \"abc\""
+                "error_entries": [
+                    {"schema_path": "/minLength", "error": "string too short, expected at least 10, got 3"},
+                    {"schema_path": "/pattern", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""},
+                    {"schema_path": "/format", "error": "expected valid \"date\", got \"abc\""}
+                ]
             }
         ]
     },
@@ -276,12 +291,12 @@
                     "credit_card": "1234-5678-9012-3456"
                 },
                 "valid": false,
-                "error": {
-                    "parts": [
-                        "property name is required when credit_card is set",
-                        "property billing_address is required when credit_card is set"
+                "error_entries_anyOf": [
+                    [
+                        {"schema_path": "/dependencies/credit_card", "error": "property name is required when credit_card is set"},
+                        {"schema_path": "/dependencies/credit_card", "error": "property billing_address is required when credit_card is set"}
                     ]
-                }
+                ]
             }
         ]
     },
@@ -305,12 +320,16 @@
                     "email": "john@example.com"
                 },
                 "valid": false,
-                "error": {
-                    "parts": [
-                        "additional properties forbidden, found email",
-                        "additional properties forbidden, found age"
+                "error_entries_anyOf": [
+                    [
+                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found email"},
+                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found age"}
+                    ],
+                    [
+                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found age"},
+                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found email"}
                     ]
-                }
+                ]
             }
         ]
     }
