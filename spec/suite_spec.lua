@@ -262,33 +262,31 @@ describe("[JSON schema Draft 4 with collect_all_errors]", function()
                   assert.has.no.error(function()
                     result, err = validator(case.data)
                   end)
-                  -- For tests with collect_all_errors enabled, we just verify validation fails
                   if case.error then
-                    -- Use substring matching to allow extra errors from collect_all_errors
                     assert.is_table(err)
                     local flag = false
-                    if #err > 0 then
-                      flag = true
+                    if type(err) == "table" and #err > 0 then
+                      for _, detailed_err in pairs(err) do
+                        if type(case.error) == "string" then
+                          -- Direct match or substring match
+                          if case.error == detailed_err.error or string.find(case.error, detailed_err.error, 1, true) then
+                            flag = true
+                            break
+                          end
+                        elseif type(case.error) == "table" then
+                          for _, case_err in pairs(case.error) do
+                            if case_err == detailed_err.error or string.find(case_err, detailed_err.error, 1, true) then
+                              flag = true
+                              break
+                            end
+                          end
+                          if flag then 
+                            break 
+                          end
+                        end
+                      end
                     end
                     assert.is_true(flag)
-                    -- local errors = case.error
-                    -- if type(errors) ~= "table" then
-                    --   errors = { errors }
-                    -- end
-                    -- local matched = false
-                    -- for _, e in ipairs(errors) do
-                    --   if err.error:find(e, 1, true) then
-                    --     matched = true
-                    --     break
-                    --   end
-                    -- end
-                    -- if not matched then
-                    --   if #errors > 1 then
-                    --     error("Expected error to contain one of: " .. table.concat(errors, " OR ") .. "\nActual: " .. err)
-                    --   else
-                    --     error("Expected error to contain: " .. errors[1] .. "\nActual: " .. err)
-                    --   end
-                    -- end
                   end
                   assert.has.error(function()
                     assert(result, err)

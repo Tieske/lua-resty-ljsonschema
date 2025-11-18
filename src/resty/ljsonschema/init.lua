@@ -220,16 +220,17 @@ function codectx_mt:as_func(name, ...)
   error(err)
 end
 
-function codectx_mt:handle_error(indent, error_msg, schema_path)
+function codectx_mt:handle_error(indent, error_msg, schema_path, instance_path)
   indent = indent or ''
+  instance_path = instance_path or '""'
   if self._root._collect_all_errors then
-    self:stmt(sformat('%stable.insert(errors, {schema_path = %s, error = %s})', indent, schema_path, error_msg))
+    self:stmt(sformat('%stable.insert(errors, {schema_path = %s, instance_path = %s, error = %s})', indent, schema_path, instance_path, error_msg))
   else
     self:stmt(sformat('%sreturn false, %s', indent, error_msg))
   end  
 end
 
-function codectx_mt:merge_child_errors(indent, err_var, path_prefix)
+function codectx_mt:merge_child_errors(indent, err_var, path_prefix, instance_prefix)
   indent = indent or ''
   if self._root._collect_all_errors then
 
@@ -239,14 +240,20 @@ function codectx_mt:merge_child_errors(indent, err_var, path_prefix)
     if path_prefix and path_prefix ~= '' then
       local formatted_prefix = path_prefix:match("^/") and path_prefix or ("/" .. path_prefix)
       self:stmt(sformat('%s    local new_path = sub_err.schema_path == "" and %q or (%q .. sub_err.schema_path)', indent, formatted_prefix, formatted_prefix))
-      self:stmt(sformat('%s    table.insert(errors, {schema_path = new_path, error = sub_err.error})', indent))
+      if instance_prefix and instance_prefix ~= '' then
+        self:stmt(sformat('%s    local new_instance_path = sub_err.instance_path == "" and %s or (%s .. sub_err.instance_path)', indent, instance_prefix, instance_prefix))
+        self:stmt(sformat('%s    table.insert(errors, {schema_path = new_path, instance_path = new_instance_path, error = sub_err.error})', indent))
+      else
+        self:stmt(sformat('%s    table.insert(errors, {schema_path = new_path, instance_path = sub_err.instance_path, error = sub_err.error})', indent))
+      end
     else
       self:stmt(sformat('%s    table.insert(errors, sub_err)', indent))
     end
     self:stmt(sformat('%s  end', indent))
     self:stmt(sformat('%selse', indent))
     local formatted_prefix = (path_prefix and path_prefix ~= '') and (path_prefix:match("^/") and path_prefix or ("/" .. path_prefix)) or ""
-    self:stmt(sformat('%s  table.insert(errors, {schema_path = %q, error = %s})', indent, formatted_prefix, err_var))
+    local formatted_instance = instance_prefix or '""'
+    self:stmt(sformat('%s  table.insert(errors, {schema_path = %q, instance_path = %s, error = %s})', indent, formatted_prefix, formatted_instance, err_var))
     self:stmt(sformat('%send', indent))
   end
 end
@@ -540,7 +547,7 @@ generate_validator = function(ctx, schema)
   if tt == 'string' then
     -- only one type allowed
     ctx:stmt('if not (', typeexpr(ctx, schema.type, datatype, datakind), ') then')
-    ctx:handle_error('  ', sformat('"wrong type: expected %s, got " .. %s', schema.type, valuekind), '"/type"')
+    ctx:handle_error('  ', sformat('"wrong type: expected %s, got " .. %s', schema.type, valuekind), '"/type"', '""')
     ctx:stmt('end')
   elseif tt == 'table' then
     -- multiple types allowed
@@ -549,7 +556,7 @@ generate_validator = function(ctx, schema)
       ctx:stmt('  ', typeexpr(ctx, t, datatype, datakind), ' or')
     end
     ctx:stmt('false) then') -- close the last "or" statement
-    ctx:handle_error('  ', sformat('"wrong type: expected one of %s, got " .. %s', table.concat(schema.type, ', '),  valuekind), '"/type"')
+    ctx:handle_error('  ', sformat('"wrong type: expected one of %s, got " .. %s', table.concat(schema.type, ', '),  valuekind), '"/type"', '""')
     ctx:stmt('end')
   elseif tt ~= 'nil' then error('invalid "type" type: got ' .. tt) end
 
@@ -589,9 +596,9 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat(  '      local ok, err = %s(propvalue)', propvalidator))
       ctx:stmt(          '      if not ok then')
       if ctx._root._collect_all_errors then
-        ctx:merge_child_errors('        ', 'err', sformat('/properties/%s', prop))
+        ctx:merge_child_errors('        ', 'err', sformat('/properties/%s', prop), sformat('"/" .. %q', prop))
       else
-        ctx:handle_error('        ', sformat("'property ' .. %q .. ' validation failed: ' .. err", prop))
+        ctx:stmt(sformat("        return false, 'property ' .. %q .. ' validation failed: ' .. err", prop))
       end
       ctx:stmt(          '      end')
 
@@ -611,9 +618,9 @@ generate_validator = function(ctx, schema)
           ctx:stmt(sformat('      ok, err = %s(%s)', depvalidator, ctx:param(1)))
           ctx:stmt(        '      if not ok then')
           if ctx._root._collect_all_errors then
-            ctx:merge_child_errors('        ', 'err', sformat('/dependencies/%s', prop))
+            ctx:merge_child_errors('        ', 'err', sformat('/dependencies/%s', prop), '""')
           else
-            ctx:handle_error('        ', sformat("'failed to validate dependent schema for ' .. %q .. ': ' .. err", prop))
+            ctx:stmt(sformat("        return false, 'failed to validate dependent schema for ' .. %q .. ': ' .. err", prop))
           end
           ctx:stmt(        '      end')
         end
@@ -621,7 +628,7 @@ generate_validator = function(ctx, schema)
 
       if required[prop] then
         ctx:stmt(        '    else')
-        ctx:handle_error('      ', sformat("'property ' .. %q .. ' is required'", prop), '"/required"')
+        ctx:handle_error('      ', sformat("'property ' .. %q .. ' is required'", prop), '"/required"', '""')
         required[prop] = nil
       end
       ctx:stmt(          '    end') -- if prop
@@ -631,7 +638,7 @@ generate_validator = function(ctx, schema)
     -- check the rest of required fields
     for prop, _ in pairs(required) do
       ctx:stmt(sformat('  if %s[%q] == nil then', ctx:param(1), prop))
-      ctx:handle_error('    ', sformat("'property ' .. %q .. ' is required'", prop), '"/required"')
+      ctx:handle_error('    ', sformat("'property ' .. %q .. ' is required'", prop), '"/required"', '""')
       ctx:stmt(        '  end')
     end
 
@@ -652,7 +659,7 @@ generate_validator = function(ctx, schema)
           ctx:stmt(sformat('    local ok, err = %s(%s)', depvalidator, ctx:param(1)))
           ctx:stmt(        '    if not ok then')
           if ctx._root._collect_all_errors then
-            ctx:merge_child_errors('      ', 'err', sformat('/dependencies/%s', prop))
+            ctx:merge_child_errors('      ', 'err', sformat('/dependencies/%s', prop), '""')
           else
             ctx:stmt(sformat("    return false, 'failed to validate dependent schema for ' .. %q .. ': ' .. err", prop))
           end
@@ -694,7 +701,7 @@ generate_validator = function(ctx, schema)
           ctx:stmt(sformat('      local ok, err = %s(value)', validator))
           ctx:stmt(        '      if not ok then')
           if ctx._root._collect_all_errors then
-            ctx:merge_child_errors('        ', 'err', sformat('/patternProperties/%s', patt))
+            ctx:merge_child_errors('        ', 'err', sformat('/patternProperties/%s', patt), '("/" .. prop)')
           else
             ctx:stmt(sformat("        return false, 'failed to validate ' .. prop .. ' (matching %q): ' .. err", patt))
           end
@@ -709,13 +716,14 @@ generate_validator = function(ctx, schema)
           ctx:stmt(sformat('      local ok, err = %s(value)', addprop_validator))
           ctx:stmt(        '      if not ok then')
           if ctx._root._collect_all_errors then
-            ctx:merge_child_errors('        ', 'err', '/additionalProperties')
+            ctx:merge_child_errors('        ', 'err', '/additionalProperties', '("/" .. prop)')
           else
             ctx:stmt(sformat("        return false, 'failed to validate additional property ' .. prop .. ': ' .. err"))
           end
           ctx:stmt(        '      end')
         else
           -- additional properties are forbidden
+          -- TODO  check instance_path
           ctx:handle_error('      ', '"additional properties forbidden, found " .. prop', '"/additionalProperties"')
         end
         ctx:stmt(          '    end') -- if not (%s[prop] or matched)
@@ -725,7 +733,7 @@ generate_validator = function(ctx, schema)
           ctx:stmt(sformat('      local ok, err = %s(value)', validator))
           ctx:stmt(        '      if not ok then')
           if ctx._root._collect_all_errors then
-            ctx:merge_child_errors('        ', 'err', sformat('/patternProperties/%s', patt))
+            ctx:merge_child_errors('        ', 'err', sformat('/patternProperties/%s', patt), '("/" .. prop)')
           else
             ctx:stmt(sformat("        return false, 'failed to validate ' .. prop .. ' (matching %q): ' .. err", patt))
           end
@@ -746,7 +754,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(sformat('      local ok, err = %s(value)', addprop_validator))
         ctx:stmt(        '      if not ok then')
         if ctx._root._collect_all_errors then
-          ctx:merge_child_errors('        ', 'err', '/additionalProperties')
+          ctx:merge_child_errors('        ', 'err', '/additionalProperties', '("/" .. prop)')
         else
           ctx:stmt(sformat("        return false, 'failed to validate additional property ' .. prop .. ': ' .. err"))
         end
@@ -768,12 +776,12 @@ generate_validator = function(ctx, schema)
 
     if schema.minProperties then
       ctx:stmt(sformat('  if propcount < %d then', schema.minProperties))
-      ctx:handle_error('    ', sformat('"expect object to have at least %s properties"', schema.minProperties), '"/minProperties"')
+      ctx:handle_error('    ', sformat('"expect object to have at least %s properties"', schema.minProperties), '"/minProperties"', '""')
       ctx:stmt(        '  end')
     end
     if schema.maxProperties then
       ctx:stmt(sformat('  if propcount > %d then', schema.maxProperties))
-      ctx:handle_error('    ', sformat('"expect object to have at most %s properties"', schema.maxProperties), '"/maxProperties"')
+      ctx:handle_error('    ', sformat('"expect object to have at most %s properties"', schema.maxProperties), '"/maxProperties"', '""')
       ctx:stmt(        '  end')
     end
 
@@ -791,12 +799,12 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat(  '  local itemcount = #%s', ctx:param(1)))
       if schema.minItems then
         ctx:stmt(sformat('  if itemcount < %d then', schema.minItems))
-        ctx:handle_error('    ', sformat('"expect array to have at least %s items"', schema.minItems), '"/minItems"')
+        ctx:handle_error('    ', sformat('"expect array to have at least %s items"', schema.minItems), '"/minItems"', '""')
         ctx:stmt(        '  end')
       end
       if schema.maxItems then
         ctx:stmt(sformat('  if itemcount > %d then', schema.maxItems))
-        ctx:handle_error('    ', sformat('"expect array to have at most %s items"', schema.maxItems), '"/maxItems"')
+        ctx:handle_error('    ', sformat('"expect array to have at most %s items"', schema.maxItems), '"/maxItems"', '""')
         ctx:stmt(        '  end')
       end
     end
@@ -817,7 +825,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(sformat('    local ok, err = %s(item)', ivalidator))
         ctx:stmt(sformat('    if not ok then'))
         if ctx._root._collect_all_errors then
-          ctx:merge_child_errors('      ', 'err', '/items')
+          ctx:merge_child_errors('      ', 'err', '/items', sformat('"/%d"', i))
         else
           ctx:stmt(sformat("        return false, 'failed to validate item %d: ' .. err", i))
         end
@@ -828,7 +836,7 @@ generate_validator = function(ctx, schema)
       -- additional items check
       if schema.additionalItems == false then
         ctx:stmt(sformat('  if %s[%d] ~= nil then', ctx:param(1), #schema.items+1))
-        ctx:handle_error('      ', '"found unexpected extra items in array"', '"/additionalItems"')
+        ctx:handle_error('      ', '"found unexpected extra items in array"', '"/additionalItems"', sformat('"/%d"', #schema.items+1))
         ctx:stmt(        '  end')
       elseif type(schema.additionalItems) == 'table' then
         local validator = ctx:validator({ 'additionalItems' }, schema.additionalItems)
@@ -836,7 +844,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(sformat('    local ok, err = %s(%s[i])', validator, ctx:param(1)))
         ctx:stmt(sformat('    if not ok then'))
         if ctx._root._collect_all_errors then
-          ctx:merge_child_errors('      ', 'err', '/additionalItems')
+          ctx:merge_child_errors('      ', 'err', '/additionalItems', '("/" .. i)')
         else
           ctx:stmt(sformat('      return false, %s("failed to validate additional item %%d: %%s", i, err)', ctx:libfunc('string.format')))
         end
@@ -852,7 +860,7 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat('    local ok, err = %s(item)', validator))
       ctx:stmt(sformat('    if not ok then'))
       if ctx._root._collect_all_errors then
-        ctx:merge_child_errors('      ', 'err', "/items")
+        ctx:merge_child_errors('      ', 'err', "/items", '("/" .. i)')
       else
         ctx:stmt(sformat('      return false, %s("failed to validate item %%d: %%s", i, err)', ctx:libfunc('string.format')))
       end
@@ -867,7 +875,7 @@ generate_validator = function(ctx, schema)
       ctx:stmt(        '    for j=1, i-1 do')
       ctx:stmt(sformat('      if %s(%s[i], %s[j]) then', ctx:libfunc('lib.deepeq'), ctx:param(1), ctx:param(1)))
       ctx:handle_error('        ', sformat('%s("expected unique items but items %%d and %%d are equal", i, j)',
-                       ctx:libfunc('string.format')), '"/uniqueItems"')
+                       ctx:libfunc('string.format')), '"/uniqueItems"', '""')
       ctx:stmt(        '      end')
       ctx:stmt(        '    end')
       ctx:stmt(        '  end')
@@ -880,18 +888,18 @@ generate_validator = function(ctx, schema)
     ctx:stmt(sformat('  local length = %s(%s)', ctx:libfunc('custom.str_len'), ctx:param(1)))
     ctx:stmt(        '  if not length then') -- allows for overriding and NOT allowing invalid UTF8
     -- FIXME: schema path
-    ctx:handle_error('    ', '"failed to get string length, invalid utf8"')
+    ctx:handle_error('    ', '"failed to get string length, invalid utf8"', '""', '""')
     ctx:stmt(        '  end')
     if schema.minLength then
       ctx:stmt(sformat('  if length and length < %d then', schema.minLength))
       ctx:handle_error('    ', sformat('%s("string too short, expected at least %d, got %%d", length)',
-                       ctx:libfunc('string.format'), schema.minLength), '"/minLength"')
+                       ctx:libfunc('string.format'), schema.minLength), '"/minLength"', '""')
       ctx:stmt(        '  end')
     end
     if schema.maxLength then
       ctx:stmt(sformat('  if length and length > %d then', schema.maxLength))
       ctx:handle_error('    ', sformat('%s("string too long, expected at most %d, got %%d", length)',
-                       ctx:libfunc('string.format'), schema.maxLength), '"/maxLength"')
+                       ctx:libfunc('string.format'), schema.maxLength), '"/maxLength"', '""')
       ctx:stmt(        '  end')
     end
     if schema.pattern then
@@ -918,7 +926,7 @@ generate_validator = function(ctx, schema)
         local split_pattern = "^(.+)[tT](.+)$"
         ctx:stmt(sformat('  local date_value, time_value = %s:match(%q)', ctx:param(1), split_pattern))
         ctx:stmt(        '  if not date_value then')
-        ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)))
+        ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)), '"/format"', '""')
         ctx:stmt(        '  end')
       end
       if schema.format == "date" or schema.format == "date-time" then
@@ -938,7 +946,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(          '  elseif month == 2 then')
         ctx:stmt(          '    if ((year % 400) == 0 or ((year % 100) ~= 0 and (year % 4) == 0)) then')
         ctx:stmt(          '      if day > 29 then')
-        ctx:handle_error('        ', sformat('%s([[expected valid leap year date, got %%q]], %s)', ctx:libfunc('string.format'), ctx:param(1)))
+        ctx:handle_error('        ', sformat('%s([[expected valid leap year date, got %%q]], %s)', ctx:libfunc('string.format'), ctx:param(1)), '"/format"', '""')
         ctx:stmt(          '      end')
         ctx:stmt(          '    else')
         ctx:stmt(          '      is_date_valid =  day <= 28')
@@ -952,7 +960,7 @@ generate_validator = function(ctx, schema)
         if ctx._root._collect_all_errors and schema.format == "date-time" then
           ctx:stmt(          '    record_err = true')
         else
-          ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)))
+          ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)), '"/format"', '""')
         end
         ctx:stmt(          '  end')
         if ctx._root._collect_all_errors and schema.format == "date-time" then
@@ -994,12 +1002,13 @@ generate_validator = function(ctx, schema)
         if ctx._root._collect_all_errors and schema.format == "date-time" then
           ctx:stmt(            '    record_err = true')
         else
-          ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)))
+          ctx:handle_error('    ', sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1)), '"/format"', '""')
         end
         ctx:stmt(            '  end')
         if ctx._root._collect_all_errors and schema.format == "date-time" then
           ctx:stmt(          '    if record_err then')
-          ctx:stmt(sformat(    '    table.insert(errors, %s([[expected valid %q, got %%q]], %s))', ctx:libfunc('string.format'), schema.format, ctx:param(1)))
+          ctx:stmt(sformat(    '    table.insert(errors, {schema_path = "/format", instance_path = "", error = %s})', 
+                   sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1))))
           ctx:stmt(          '    end')
           ctx:stmt(          '  end')
         end
@@ -1016,7 +1025,7 @@ generate_validator = function(ctx, schema)
       local msg = schema.exclusiveMinimum and 'sctrictly greater' or 'greater'
       ctx:stmt(sformat('  if %s %s %s then', format_number(ctx:param(1)), op, format_number(schema.minimum)))
       ctx:handle_error('    ', sformat('%s("expected %%s to be %s than %s", %s(%s))',
-                       ctx:libfunc('string.format'), msg, format_number(schema.minimum), ctx:libfunc('lib.format_number'), ctx:param(1)), '"/minimum"')
+                       ctx:libfunc('string.format'), msg, format_number(schema.minimum), ctx:libfunc('lib.format_number'), ctx:param(1)), '"/minimum"', '""')
       ctx:stmt(        '  end')
     end
 
@@ -1025,7 +1034,7 @@ generate_validator = function(ctx, schema)
       local msg = schema.exclusiveMaximum and 'sctrictly smaller' or 'smaller'
       ctx:stmt(sformat('  if %s %s %s then', format_number(ctx:param(1)), op, format_number(schema.maximum)))
       ctx:handle_error('    ', sformat('%s("expected %%s to be %s than %s", %s(%s))',
-                       ctx:libfunc('string.format'), msg, format_number(schema.maximum), ctx:libfunc('lib.format_number'), ctx:param(1)), '"/maximum"')
+                       ctx:libfunc('string.format'), msg, format_number(schema.maximum), ctx:libfunc('lib.format_number'), ctx:param(1)), '"/maximum"', '""')
       ctx:stmt(        '  end')
     end
 
@@ -1042,7 +1051,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(sformat('  if %s(quotient) ~= quotient or %s == quotient or %s == -quotient then', ctx:libfunc('math.modf'), ctx:libfunc('math.huge'), ctx:libfunc('math.huge')))
       end
       ctx:handle_error('    ', sformat('%s("expected %%s to be a multiple of %s", %s)',
-                       ctx:libfunc('string.format'), mof, ctx:param(1)), '"/multipleOf"')
+                       ctx:libfunc('string.format'), mof, ctx:param(1)), '"/multipleOf"', '""')
       ctx:stmt(          '  end')
     end
     ctx:stmt('end') -- if number
@@ -1071,7 +1080,7 @@ generate_validator = function(ctx, schema)
       end
     end
     ctx:stmt(') then')
-    ctx:handle_error('  ', '"matches none of the enum values"', '"/enum"')
+    ctx:handle_error('  ', '"matches none of the enum values"', '"/enum"', '""')
     ctx:stmt('end')
   end
 
@@ -1084,9 +1093,9 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat('  local ok, err = %s(%s)', validator, ctx:param(1)))
       ctx:stmt(sformat('  if not ok then'))
       if ctx._root._collect_all_errors then
-        ctx:merge_child_errors('    ', 'err', sformat('/allOf/%d', i))
+        ctx:merge_child_errors('    ', 'err', sformat('/allOf/%d', i), '""')
       else
-        ctx:handle_error('    ', sformat('"allOf %d failed: " .. err', i))
+        ctx:stmt(sformat('    return false, "allOf %d failed: " .. err', i))
       end
       ctx:stmt(        '  end')
       ctx:stmt(        'end')
@@ -1113,11 +1122,11 @@ generate_validator = function(ctx, schema)
         ctx:stmt(        '    if not was_matched then')
         ctx:stmt(        '      if type(error_message) == "table" then')
         ctx:stmt(        '        for _, sub_err in ipairs(error_message) do')
-        ctx:stmt(sformat('          local new_path = sub_err.schema_path == "" and "/anyOf/%d" or ("/anyOf/%d" .. sub_err.schema_path)', i-1, i-1))
-        ctx:stmt(        '          table.insert(any_of_errors, {schema_path = new_path, error = sub_err.error})')
+        ctx:stmt(sformat('          local new_path = sub_err.schema_path == "" and "/anyOf/%d" or ("/anyOf/%d" .. sub_err.schema_path)', i, i))
+        ctx:stmt(        '          table.insert(any_of_errors, {schema_path = new_path, instance_path = sub_err.instance_path, error = sub_err.error})')
         ctx:stmt(        '        end')
         ctx:stmt(        '      else')
-        ctx:stmt(sformat('        table.insert(any_of_errors, {schema_path = "/anyOf/%d", error = error_message})', i-1))
+        ctx:stmt(sformat('        table.insert(any_of_errors, {schema_path = "/anyOf/%d", instance_path = "", error = error_message})', i))
         ctx:stmt(        '      end')
         ctx:stmt(        '    end')
       end
@@ -1141,9 +1150,6 @@ generate_validator = function(ctx, schema)
       end
       ctx:stmt('  end')
       ctx:stmt(sformat('    return false, %s("object needs one of the following rectifications: %%s", unmatched)', ctx:libfunc('string.format')))
-                       
-      -- ctx:stmt(        '    return false, 'sformat('%s("object needs one of the following rectifications: %%s", unmatched)',
-      --                  ctx:libfunc('string.format')), '"/anyOf"')
     end
     ctx:stmt('end')
   end
@@ -1156,13 +1162,13 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat('  if %s(%s) then', validator, ctx:param(1)))
       ctx:stmt(        '    if matched then')
       ctx:handle_error('      ', sformat('%s("value should match only one schema, but matches both schemas %%d and %%d", matched, %d)',
-                       ctx:libfunc('string.format'), i), '"/oneOf"')
+                       ctx:libfunc('string.format'), i), '"/oneOf"', '""')
       ctx:stmt(        '    end')
       ctx:stmt(        '    matched = ', tostring(i))
       ctx:stmt(        '  end')
     end
     ctx:stmt('  if not matched then')
-    ctx:handle_error('    ', '"value should match only one schema, but matches none"', '"/oneOf"')
+    ctx:handle_error('    ', '"value should match only one schema, but matches none"', '"/oneOf"', '""')
     ctx:stmt('  end')
     ctx:stmt('end')
   end
@@ -1170,7 +1176,7 @@ generate_validator = function(ctx, schema)
   if schema['not'] then
     local validator = ctx:validator({ 'not' }, schema['not'])
     ctx:stmt(sformat('if %s(%s) then', validator, ctx:param(1)))
-    ctx:handle_error('  ', '"value wasn\'t supposed to match schema"', '"/not"')
+    ctx:handle_error('  ', '"value wasn\'t supposed to match schema"', '"/not"', '""')
     ctx:stmt(        'end')
   end
 
@@ -1218,7 +1224,11 @@ local _M = {
   -- There is no default implementation: this function must be provided if
   -- resolving external schemas is required. The function signature should be: `function(url)`
   -- @tparam[opt] bool custom.collect_all_errors If set to true, the validator will collect all validation errors
-  -- instead of stopping at the first one. The error message will contain all errors separated by "; ".
+  -- instead of stopping at the first one. The error message contains: 
+  -- * schema_path: Path to the JSON Schema keyword that failed validation.
+  -- * instance_path: Path to the value that failed validation.
+  -- * error: The error message.
+  --
   -- @tparam[opt=false] bool custom.coercion There are cases where incoming data will always be strings. For example
   -- when validating http-headers or query arguments.
   -- For these cases there is this option `coercion`. If you set this flag then
