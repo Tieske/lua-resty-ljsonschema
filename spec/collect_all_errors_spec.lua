@@ -4,7 +4,6 @@
 -- pairs() iteration order. General compliance tests with collect_all_errors are in suite_spec.lua
 
 local json = require 'cjson'
-json.decode_array_with_array_mt(true)
 local jsonschema = require 'resty.ljsonschema'
 
 local function readjson(path)
@@ -73,7 +72,7 @@ local options = {
 }
 
 describe("[collect_all_errors - specialized tests]", function()
-
+  json.decode_array_with_array_mt(true)
   local test_file = 'spec/extra/errors/collect_all_errors.json'
   
   for _, suite in ipairs(readjson(test_file)) do
