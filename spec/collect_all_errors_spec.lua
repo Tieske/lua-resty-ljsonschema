@@ -19,30 +19,42 @@ local function readjson(path)
   error('cannot read ' .. path)
 end
 
--- Helper function to check if error table contains all expected error entries
--- regardless of their order (to handle non-deterministic pairs() iteration)
+
 local function assert_contains_all_error_entries(actual_errors, expected_entries)
-  -- Create a map of actual error messages for quick lookup
+  -- Handle case where actual_errors might contain strings instead of tables
   local actual_error_map = {}
   for _, err_entry in ipairs(actual_errors) do
-    local key = err_entry.schema_path .. ":" .. err_entry.error
+    local key
+    if type(err_entry) == "table" and err_entry.schema_path and err_entry.error then
+      key = err_entry.schema_path .. ":" .. (err_entry.instance_path or "") .. ":" .. err_entry.error
+    elseif type(err_entry) == "table" and err_entry.error and not err_entry.schema_path then
+      -- Handle tables with only error field (like format errors)
+      key = "" .. ":" .. "" .. ":" .. err_entry.error
+    elseif type(err_entry) == "string" then
+      -- For string errors, use empty schema_path and instance_path
+      key = "" .. ":" .. "" .. ":" .. err_entry
+    else
+      error("Unexpected error format: " .. type(err_entry) .. " - " .. tostring(err_entry))
+    end
     actual_error_map[key] = true
   end
   
   -- Check each expected entry exists
   for _, expected in ipairs(expected_entries) do
-    local key = expected.schema_path .. ":" .. expected.error
+    local key = expected.schema_path .. ":" .. (expected.instance_path or "") .. ":" .. expected.error
     if not actual_error_map[key] then
       local actual_str = "[\n"
       for _, err_entry in ipairs(actual_errors) do
-        actual_str = actual_str .. string.format('  {schema_path="%s", error="%s"},\n', 
-                                                err_entry.schema_path, err_entry.error)
+        if type(err_entry) == "table" and err_entry.schema_path and err_entry.error then
+          actual_str = actual_str .. string.format('  {schema_path="%s", instance_path="%s", error="%s"},\n', 
+                                                  err_entry.schema_path, err_entry.instance_path or "", err_entry.error)
+        end
       end
       actual_str = actual_str .. "]"
       
       error(string.format(
-        "Expected error entry not found:\n  Expected: {schema_path=\"%s\", error=\"%s\"}\n  Actual errors: %s",
-        expected.schema_path, expected.error, actual_str
+        "Expected error entry not found:\n  Expected: {schema_path=\"%s\", instance_path=\"%s\", error=\"%s\"}\n  Actual errors: %s",
+        expected.schema_path, expected.instance_path or "", expected.error, actual_str
       ))
     end
   end
@@ -94,22 +106,6 @@ describe("[collect_all_errors - specialized tests]", function()
             -- Check error entries for collect_all_errors.json tests
             if case.error_entries then
               assert_contains_all_error_entries(errors, case.error_entries)
-            elseif case.error_entries_anyOf then
-              -- Try each possibility until one matches
-              local matched = false
-              local error_messages = {}
-              for i, possibility in ipairs(case.error_entries_anyOf) do
-                local ok, match_err = pcall(assert_contains_all_error_entries, errors, possibility)
-                if ok then
-                  matched = true
-                  break
-                else
-                  table.insert(error_messages, string.format("Possibility %d failed: %s", i, match_err))
-                end
-              end
-              if not matched then
-                error("No matching error format found:\n" .. table.concat(error_messages, "\n"))
-              end
             end
           end
         end) -- it

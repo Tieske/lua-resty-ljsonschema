@@ -28,12 +28,10 @@
                     "email": "invalid"
                 },
                 "valid": false,
-                "error_entries_anyOf": [
-                    [
-                        {"schema_path": "/properties/email", "error": "failed to match pattern ^[^@]+@[^@]+$ with \"invalid\""},
-                        {"schema_path": "/properties/name", "error": "string too short, expected at least 3, got 2"},
-                        {"schema_path": "/properties/age", "error": "expected -5 to be greater than 0"}
-                    ]
+                "error_entries": [
+                    {"schema_path": "/properties/email/pattern", "instance_path": "/email", "error": "failed to match pattern ^[^@]+@[^@]+$ with \"invalid\""},
+                    {"schema_path": "/properties/name/minLength", "instance_path": "/name", "error": "string too short, expected at least 3, got 2"},
+                    {"schema_path": "/properties/age/minimum", "instance_path": "/age", "error": "expected -5 to be greater than 0"}
                 ]
             },
             {
@@ -43,8 +41,8 @@
                 },
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/properties/name", "error": "string too short, expected at least 3, got 1"},
-                    {"schema_path": "/required", "error": "property age is required"}
+                    {"schema_path": "/properties/name/minLength", "instance_path": "/name", "error": "string too short, expected at least 3, got 1"},
+                    {"schema_path": "/required", "instance_path": "", "error": "property age is required"}
                 ]
             }
         ]
@@ -67,10 +65,10 @@
                 "data": ["a", "b", "a"],
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/items", "error": "failed to validate item 1: string too short, expected at least 2, got 1"},
-                    {"schema_path": "/items", "error": "failed to validate item 2: string too short, expected at least 2, got 1"},
-                    {"schema_path": "/items", "error": "failed to validate item 3: string too short, expected at least 2, got 1"},
-                    {"schema_path": "/uniqueItems", "error": "expected unique items but items 3 and 1 are equal"}
+                    {"schema_path": "/items/minLength", "instance_path": "/1", "error": "string too short, expected at least 2, got 1"},
+                    {"schema_path": "/items/minLength", "instance_path": "/2", "error": "string too short, expected at least 2, got 1"},
+                    {"schema_path": "/items/minLength", "instance_path": "/3", "error": "string too short, expected at least 2, got 1"},
+                    {"schema_path": "/uniqueItems", "instance_path": "", "error": "expected unique items but items 3 and 1 are equal"}
                 ]
             },
             {
@@ -78,7 +76,7 @@
                 "data": ["aa", "bb", "cc", "dd", "ee", "ff"],
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/maxItems", "error": "expect array to have at most 5 items"}
+                    {"schema_path": "/maxItems", "instance_path": "", "error": "expect array to have at most 5.0 items"}
                 ]
             }
         ]
@@ -97,8 +95,8 @@
                 "data": "abc",
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/minLength", "error": "string too short, expected at least 5, got 3"},
-                    {"schema_path": "/pattern", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""}
+                    {"schema_path": "/minLength", "instance_path": "", "error": "string too short, expected at least 5, got 3"},
+                    {"schema_path": "/pattern", "instance_path": "", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""}
                 ]
             }
         ]
@@ -125,9 +123,9 @@
                 "data": {},
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/allOf/1", "error": "property name is required"},
-                    {"schema_path": "/allOf/2", "error": "property age is required"},
-                    {"schema_path": "/allOf/3", "error": "property email is required"}
+                    {"schema_path": "/allOf/1/required", "instance_path": "", "error": "property name is required"},
+                    {"schema_path": "/allOf/2/required", "instance_path": "", "error": "property age is required"},
+                    {"schema_path": "/allOf/3/required", "instance_path": "", "error": "property email is required"}
                 ]
             }
         ]
@@ -146,8 +144,8 @@
                 "data": 7,
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/minimum", "error": "expected 7 to be greater than 10"},
-                    {"schema_path": "/multipleOf", "error": "expected 7 to be a multiple of 5"}
+                    {"schema_path": "/minimum", "instance_path": "", "error": "expected 7 to be greater than 10"},
+                    {"schema_path": "/multipleOf", "instance_path": "", "error": "expected 7.0 to be a multiple of 5.0"}
                 ]
             }
         ]
@@ -184,11 +182,9 @@
                     }
                 },
                 "valid": false,
-                "error_entries_anyOf": [
-                    [
-                        {"schema_path": "/properties/user/properties/name", "error": "string too short, expected at least 2, got 1"},
-                        {"schema_path": "/properties/user/properties/age/type", "error": "wrong type: expected integer, got string"}
-                    ]
+                "error_entries": [
+                    {"schema_path": "/properties/user/properties/name/minLength", "instance_path": "/user/name", "error": "string too short, expected at least 2, got 1"},
+                    {"schema_path": "/properties/user/properties/age/type", "instance_path": "/user/age", "error": "wrong type: expected integer, got string"}
                 ]
             }
         ]
@@ -205,7 +201,7 @@
                 "data": "2023-02-30T25:30:00Z",
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/format", "error": "expected valid \"date-time\", got \"2023-02-30T25:30:00Z\""}
+                    {"schema_path": "/format", "instance_path": "", "error": "expected valid \"date-time\", got \"2023-02-30T25:30:00Z\""}
                 ]
             }
         ]
@@ -222,7 +218,7 @@
                 "data": "2023-02-30",
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/format", "error": "expected valid \"date\", got \"2023-02-30\""}
+                    {"schema_path": "/format", "instance_path": "", "error": "expected valid \"date\", got \"2023-02-30\""}
                 ]
             }
         ]
@@ -239,7 +235,7 @@
                 "data": "25:30:00Z",
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/format", "error": "expected valid \"time\", got \"25:30:00Z\""}
+                    {"schema_path": "/format", "instance_path": "", "error": "expected valid \"time\", got \"25:30:00Z\""}
                 ]
             }
         ]
@@ -258,15 +254,69 @@
                 "data": "abc",
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/minLength", "error": "string too short, expected at least 10, got 3"},
-                    {"schema_path": "/pattern", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""},
-                    {"schema_path": "/format", "error": "expected valid \"date\", got \"abc\""}
+                    {"schema_path": "/minLength", "instance_path": "", "error": "string too short, expected at least 10, got 3"},
+                    {"schema_path": "/pattern", "instance_path": "", "error": "failed to match pattern ^[A-Z]+$ with \"abc\""},
+                    {"schema_path": "/format", "instance_path": "", "error": "expected valid \"date\", got \"abc\""}
                 ]
             }
         ]
     },
     {
-        "description": "dependencies",
+        "description": "schema dependencies",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "dependencies": {
+                "payment_info": {
+                    "properties": {
+                        "billing_address": {
+                            "type": "string",
+                            "minLength": 5
+                        },
+                        "security_code": {
+                            "type": "string",
+                            "pattern": "^[0-9]{3,4}$"
+                        }
+                    },
+                    "required": ["billing_address", "security_code"]
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "schema dependency missing required properties",
+                "data": {
+                    "name": "John",
+                    "payment_info": "card-details"
+                },
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/dependencies/payment_info/required", "instance_path": "", "error": "property security_code is required"},
+                    {"schema_path": "/dependencies/payment_info/required", "instance_path": "", "error": "property billing_address is required"}
+                ]
+            },
+            {
+                "description": "schema dependency with invalid properties",
+                "data": {
+                    "name": "John",
+                    "payment_info": "card-details",
+                    "billing_address": "123",
+                    "security_code": "12"
+                },
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/dependencies/payment_info/properties/billing_address/minLength", "instance_path": "/billing_address", "error": "string too short, expected at least 5, got 3"},
+                    {"schema_path": "/dependencies/payment_info/properties/security_code/pattern", "instance_path": "/security_code", "error": "failed to match pattern ^[0-9]{3,4}$ with \"12\""}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "array dependencies",
         "schema": {
             "type": "object",
             "properties": {
@@ -291,11 +341,9 @@
                     "credit_card": "1234-5678-9012-3456"
                 },
                 "valid": false,
-                "error_entries_anyOf": [
-                    [
-                        {"schema_path": "/dependencies/credit_card", "error": "property name is required when credit_card is set"},
-                        {"schema_path": "/dependencies/credit_card", "error": "property billing_address is required when credit_card is set"}
-                    ]
+                "error_entries": [
+                    {"schema_path": "/dependencies", "instance_path": "", "error": "property name is required when credit_card is set"},
+                    {"schema_path": "/dependencies", "instance_path": "", "error": "property billing_address is required when credit_card is set"}
                 ]
             }
         ]
@@ -320,15 +368,205 @@
                     "email": "john@example.com"
                 },
                 "valid": false,
-                "error_entries_anyOf": [
-                    [
-                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found email"},
-                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found age"}
-                    ],
-                    [
-                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found age"},
-                        {"schema_path": "/additionalProperties", "error": "additional properties forbidden, found email"}
-                    ]
+                "error_entries": [
+                    {"schema_path": "/additionalProperties", "instance_path": "", "error": "additional properties forbidden, found age"},
+                    {"schema_path": "/additionalProperties", "instance_path": "", "error": "additional properties forbidden, found email"}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "additionalItems with schema validation",
+        "schema": {
+            "type": "array",
+            "items": [
+                {"type": "string"},
+                {"type": "number"}
+            ],
+            "additionalItems": {
+                "type": "boolean"
+            }
+        },
+        "tests": [
+            {
+                "description": "additional items violate schema",
+                "data": ["hello", 42, "not_boolean", 123],
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/additionalItems/type", "instance_path": "/3", "error": "wrong type: expected boolean, got string"},
+                    {"schema_path": "/additionalItems/type", "instance_path": "/4", "error": "wrong type: expected boolean, got integer"}
+                ]
+            },
+            {
+                "description": "mixed additional items validation",
+                "data": ["hello", 42, true, "invalid", false, 123],
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/additionalItems/type", "instance_path": "/4", "error": "wrong type: expected boolean, got string"},
+                    {"schema_path": "/additionalItems/type", "instance_path": "/6", "error": "wrong type: expected boolean, got integer"}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "forbidden additionalItems",
+        "schema": {
+            "type": "array",
+            "items": [
+                {"type": "string"},
+                {"type": "number"}
+            ],
+            "additionalItems": false
+        },
+        "tests": [
+            {
+                "description": "forbidden additional items",
+                "data": ["hello", 42, 123],
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/additionalItems", "instance_path": "/3", "error": "found unexpected extra items in array"}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "patternProperties validation errors",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "patternProperties": {
+                "^S_": {
+                    "type": "string",
+                    "minLength": 5
+                },
+                "^I_": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "additionalProperties": false
+        },
+        "tests": [
+            {
+                "description": "pattern properties validation errors",
+                "data": {
+                    "name": "John",
+                    "S_code": "ab",
+                    "I_number": -5
+                },
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/patternProperties/^S_/minLength", "instance_path": "/S_code", "error": "string too short, expected at least 5, got 2"},
+                    {"schema_path": "/patternProperties/^I_/minimum", "instance_path": "/I_number", "error": "expected -5 to be greater than 0"}
+                ]
+            },
+            {
+                "description": "property not matching any pattern",
+                "data": {
+                    "name": "John",
+                    "invalid_prop": "value"
+                },
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/additionalProperties", "instance_path": "", "error": "additional properties forbidden, found invalid_prop"}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "oneOf validation errors",
+        "schema": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "minLength": 5
+                },
+                {
+                    "type": "number",
+                    "minimum": 10
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"}
+                    },
+                    "required": ["name"]
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "no schema matches",
+                "data": "abc",
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/oneOf", "instance_path": "", "error": "value should match only one schema, but matches none"}
+                ]
+            },
+            {
+                "description": "object that doesn't match oneOf",
+                "data": {"age": 25},
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/oneOf", "instance_path": "", "error": "value should match only one schema, but matches none"}
+                ]
+            }
+        ]
+    },
+    {
+        "description": "anyOf validation errors",
+        "schema": {
+            "anyOf": [
+                {
+                    "type": "string",
+                    "minLength": 10
+                },
+                {
+                    "type": "number",
+                    "minimum": 100
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string", "format": "email"}
+                    },
+                    "required": ["email"]
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "no schema matches (all fail)",
+                "data": "short",
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/anyOf/1/minLength", "instance_path": "", "error": "string too short, expected at least 10, got 5"},
+                    {"schema_path": "/anyOf/2/type", "instance_path": "", "error": "wrong type: expected number, got string"},
+                    {"schema_path": "/anyOf/3/type", "instance_path": "", "error": "wrong type: expected object, got string"}
+                ]
+            },
+            {
+                "description": "number too small",
+                "data": 50,
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/anyOf/1/type", "instance_path": "", "error": "wrong type: expected string, got integer"},
+                    {"schema_path": "/anyOf/2/minimum", "instance_path": "", "error": "expected 50 to be greater than 100"},
+                    {"schema_path": "/anyOf/3/type", "instance_path": "", "error": "wrong type: expected object, got integer"}
+                ]
+            },
+            {
+                "description": "object with missing required",
+                "data": {},
+                "valid": false,
+                "error_entries": [
+                    {"schema_path": "/anyOf/1/type", "instance_path": "", "error": "wrong type: expected string, got object"},
+                    {"schema_path": "/anyOf/2/type", "instance_path": "", "error": "wrong type: expected number, got object"},
+                    {"schema_path": "/anyOf/3/required", "instance_path": "", "error": "property email is required"}
                 ]
             }
         ]
