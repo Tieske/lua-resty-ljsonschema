@@ -238,7 +238,8 @@ function codectx_mt:merge_child_errors(indent, err_var, path_prefix, instance_pr
       
     self:stmt(sformat('%s  for _, sub_err in ipairs(%s) do', indent, err_var))
     if path_prefix and path_prefix ~= '' then
-      local formatted_prefix = path_prefix:match("^/") and path_prefix or ("/" .. path_prefix)
+      -- 47 is the ASCII code for '/'
+      local formatted_prefix = string.byte(path_prefix, 1) == 47 and path_prefix or ("/" .. path_prefix)
       self:stmt(sformat('%s    local new_path = sub_err.schema_path == "" and %q or (%q .. sub_err.schema_path)', indent, formatted_prefix, formatted_prefix))
       if instance_prefix and instance_prefix ~= '' then
         self:stmt(sformat('%s    local new_instance_path = sub_err.instance_path == "" and %s or (%s .. sub_err.instance_path)', indent, instance_prefix, instance_prefix))
@@ -251,7 +252,7 @@ function codectx_mt:merge_child_errors(indent, err_var, path_prefix, instance_pr
     end
     self:stmt(sformat('%s  end', indent))
     self:stmt(sformat('%selse', indent))
-    local formatted_prefix = (path_prefix and path_prefix ~= '') and (path_prefix:match("^/") and path_prefix or ("/" .. path_prefix)) or ""
+    local formatted_prefix = (path_prefix and path_prefix ~= '') and (string.byte(path_prefix, 1) == 47 and path_prefix or ("/" .. path_prefix)) or ""
     local formatted_instance = instance_prefix or '""'
     self:stmt(sformat('%s  table.insert(errors, {schema_path = %q, instance_path = %s, error = %s})', indent, formatted_prefix, formatted_instance, err_var))
     self:stmt(sformat('%send', indent))
@@ -1113,7 +1114,6 @@ generate_validator = function(ctx, schema)
     ctx:stmt(') then')
     if ctx._root._collect_all_errors then
       -- When collect_all_errors is enabled, collect errors from all failed schemas
-      ctx:stmt('  local any_of_errors = {}')
       ctx:stmt('  do')
       for i, subschema in ipairs(schema.anyOf) do
         ctx:stmt(        '    local was_matched, error_message')
@@ -1123,16 +1123,13 @@ generate_validator = function(ctx, schema)
         ctx:stmt(        '      if type(error_message) == "table" then')
         ctx:stmt(        '        for _, sub_err in ipairs(error_message) do')
         ctx:stmt(sformat('          local new_path = sub_err.schema_path == "" and "/anyOf/%d" or ("/anyOf/%d" .. sub_err.schema_path)', i, i))
-        ctx:stmt(        '          table.insert(any_of_errors, {schema_path = new_path, instance_path = sub_err.instance_path, error = sub_err.error})')
+        ctx:stmt(        '          table.insert(errors, {schema_path = new_path, instance_path = sub_err.instance_path, error = sub_err.error})')
         ctx:stmt(        '        end')
         ctx:stmt(        '      else')
-        ctx:stmt(sformat('        table.insert(any_of_errors, {schema_path = "/anyOf/%d", instance_path = "", error = error_message})', i))
+        ctx:stmt(sformat('        table.insert(errors, {schema_path = "/anyOf/%d", instance_path = "", error = error_message})', i))
         ctx:stmt(        '      end')
         ctx:stmt(        '    end')
       end
-      ctx:stmt('  end')
-      ctx:stmt('  for _, err in ipairs(any_of_errors) do')
-      ctx:stmt('    table.insert(errors, err)')
       ctx:stmt('  end')
     else
       -- When collect_all_errors is disabled, use the original string concatenation approach
