@@ -38,11 +38,11 @@ jobs:
       with:
         submodules: recursive
 
-    - uses: leafo/gh-actions-lua@v8
+    - uses: luarocks/gh-actions-lua@v11
       with:
         luaVersion: ${{ matrix.luaVersion }}
 
-    - uses: leafo/gh-actions-luarocks@v4
+    - uses: luarocks/gh-actions-luarocks@v6
 
     - name: dependencies
       run: |

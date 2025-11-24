@@ -18,12 +18,12 @@ on:
 jobs:
 
   luacheck:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: leafo/gh-actions-lua@v9
-      - uses: leafo/gh-actions-luarocks@v4
+      - uses: luarocks/gh-actions-lua@v11
+      - uses: luarocks/gh-actions-luarocks@v6
       - name: dependencies
         run: make dev
       - name: Lint
