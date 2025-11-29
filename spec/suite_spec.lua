@@ -280,8 +280,8 @@ describe("[JSON schema Draft 4 with collect_all_errors]", function()
                               break
                             end
                           end
-                          if flag then 
-                            break 
+                          if flag then
+                            break
                           end
                         end
                       end

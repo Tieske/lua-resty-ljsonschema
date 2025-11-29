@@ -227,7 +227,7 @@ function codectx_mt:handle_error(indent, error_msg, schema_path, instance_path)
     self:stmt(sformat('%stable.insert(errors, {schema_path = %s, instance_path = %s, error = %s})', indent, schema_path, instance_path, error_msg))
   else
     self:stmt(sformat('%sreturn false, %s', indent, error_msg))
-  end  
+  end
 end
 
 function codectx_mt:merge_child_errors(indent, err_var, path_prefix, instance_prefix)
@@ -235,7 +235,7 @@ function codectx_mt:merge_child_errors(indent, err_var, path_prefix, instance_pr
   if self._root._collect_all_errors then
 
     self:stmt(sformat('%sif type(%s) == "table" then', indent, err_var))
-      
+
     self:stmt(sformat('%s  for _, sub_err in ipairs(%s) do', indent, err_var))
     if path_prefix and path_prefix ~= '' then
       -- 47 is the ASCII code for '/'
@@ -908,7 +908,7 @@ generate_validator = function(ctx, schema)
       local format_escaped_pattern = string.gsub(schema.pattern, "%%", "%%%%")
 
       ctx:stmt(sformat('  if not %s(%s, %q) then', ctx:libfunc('custom.match_pattern'), ctx:param(1), schema.pattern))
-      ctx:handle_error('    ', sformat('%s([[failed to match pattern ]] .. %q .. [[ with %%q]], %s)', 
+      ctx:handle_error('    ', sformat('%s([[failed to match pattern ]] .. %q .. [[ with %%q]], %s)',
                        ctx:libfunc('string.format'), format_escaped_pattern, ctx:param(1)), '"/pattern"')
       ctx:stmt(        '  end')
     end
@@ -1008,7 +1008,7 @@ generate_validator = function(ctx, schema)
         ctx:stmt(            '  end')
         if ctx._root._collect_all_errors and schema.format == "date-time" then
           ctx:stmt(          '    if record_err then')
-          ctx:stmt(sformat(    '    table.insert(errors, {schema_path = "/format", instance_path = "", error = %s})', 
+          ctx:stmt(sformat(    '    table.insert(errors, {schema_path = "/format", instance_path = "", error = %s})',
                    sformat('%s([[expected valid %q, got %%q]], %s)', ctx:libfunc('string.format'), schema.format, ctx:param(1))))
           ctx:stmt(          '    end')
           ctx:stmt(          '  end')
@@ -1221,7 +1221,7 @@ local _M = {
   -- There is no default implementation: this function must be provided if
   -- resolving external schemas is required. The function signature should be: `function(url)`
   -- @tparam[opt] bool custom.collect_all_errors If set to true, the validator will collect all validation errors
-  -- instead of stopping at the first one. The error message contains: 
+  -- instead of stopping at the first one. The error message contains:
   -- * schema_path: Path to the JSON Schema keyword that failed validation.
   -- * instance_path: Path to the value that failed validation.
   -- * error: The error message.

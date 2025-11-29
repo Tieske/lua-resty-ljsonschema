@@ -37,7 +37,7 @@ local function assert_contains_all_error_entries(actual_errors, expected_entries
     end
     actual_error_map[key] = true
   end
-  
+
   -- Check each expected entry exists
   for _, expected in ipairs(expected_entries) do
     local key = expected.schema_path .. ":" .. (expected.instance_path or "") .. ":" .. expected.error
@@ -45,19 +45,19 @@ local function assert_contains_all_error_entries(actual_errors, expected_entries
       local actual_str = "[\n"
       for _, err_entry in ipairs(actual_errors) do
         if type(err_entry) == "table" and err_entry.schema_path and err_entry.error then
-          actual_str = actual_str .. string.format('  {schema_path="%s", instance_path="%s", error="%s"},\n', 
+          actual_str = actual_str .. string.format('  {schema_path="%s", instance_path="%s", error="%s"},\n',
                                                   err_entry.schema_path, err_entry.instance_path or "", err_entry.error)
         end
       end
       actual_str = actual_str .. "]"
-      
+
       error(string.format(
         "Expected error entry not found:\n  Expected: {schema_path=\"%s\", instance_path=\"%s\", error=\"%s\"}\n  Actual errors: %s",
         expected.schema_path, expected.instance_path or "", expected.error, actual_str
       ))
     end
   end
-  
+
   -- Also check that we have the expected number of errors
   if #actual_errors ~= #expected_entries then
     error(string.format(
@@ -74,7 +74,7 @@ local options = {
 describe("[collect_all_errors - specialized tests]", function()
   json.decode_array_with_array_mt(true)
   local test_file = 'spec/extra/errors/collect_all_errors.json'
-  
+
   for _, suite in ipairs(readjson(test_file)) do
     describe("["..test_file.."] "..suite.description .. ":", function()
       local schema = suite.schema
@@ -97,11 +97,11 @@ describe("[collect_all_errors - specialized tests]", function()
             assert.has.no.error(function()
               result, errors = validator(case.data)
             end)
-            
+
             -- Verify that result is false and errors is a table
             assert.is_false(result)
             assert.is_table(errors)
-            
+
             -- Check error entries for collect_all_errors.json tests
             if case.error_entries then
               assert_contains_all_error_entries(errors, case.error_entries)
