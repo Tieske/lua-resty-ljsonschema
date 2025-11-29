@@ -71,45 +71,42 @@ local options = {
   collect_all_errors = true
 }
 
-describe("[collect_all_errors - specialized tests]", function()
-  json.decode_array_with_array_mt(true)
-  local test_file = 'spec/extra/errors/collect_all_errors.json'
+json.decode_array_with_array_mt(true)
+local test_file = 'spec/extra/errors/collect_all_errors.json'
 
-  for _, suite in ipairs(readjson(test_file)) do
-    describe("["..test_file.."] "..suite.description .. ":", function()
-      local schema = suite.schema
-      local validator
+for _, suite in ipairs(readjson(test_file)) do
+  describe(suite.description .. ":", function()
+    local schema = suite.schema
+    local validator
 
-      lazy_setup(function()
-        local val = assert(jsonschema.generate_validator(schema, options))
-        assert.is_function(val)
-        validator = val
-      end)
+    lazy_setup(function()
+      local val = assert(jsonschema.generate_validator(schema, options))
+      assert.is_function(val)
+      validator = val
+    end)
 
-      for _, case in ipairs(suite.tests) do
-        it(case.description, function()
-          if case.valid then
-            assert.has.no.error(function()
-              assert(validator(case.data))
-            end)
-          else
-            local result, errors
-            assert.has.no.error(function()
-              result, errors = validator(case.data)
-            end)
+    for _, case in ipairs(suite.tests) do
+      it(case.description, function()
+        if case.valid then
+          assert.has.no.error(function()
+            assert(validator(case.data))
+          end)
+        else
+          local result, errors
+          assert.has.no.error(function()
+            result, errors = validator(case.data)
+          end)
 
-            -- Verify that result is false and errors is a table
-            assert.is_false(result)
-            assert.is_table(errors)
+          -- Verify that result is false and errors is a table
+          assert.is_false(result)
+          assert.is_table(errors)
 
-            -- Check error entries for collect_all_errors.json tests
-            if case.error_entries then
-              assert_contains_all_error_entries(errors, case.error_entries)
-            end
+          -- Check error entries for collect_all_errors.json tests
+          if case.error_entries then
+            assert_contains_all_error_entries(errors, case.error_entries)
           end
-        end) -- it
-      end -- for cases
-    end) -- describe
-  end -- for suite
-
-end) -- outer describe
+        end
+      end) -- it
+    end -- for cases
+  end) -- describe
+end -- for suite
