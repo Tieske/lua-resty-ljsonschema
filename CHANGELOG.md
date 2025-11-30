@@ -24,6 +24,12 @@ The scope of what is covered by the version number excludes:
 
 ## Version history
 
+### unreleased
+
+- feat: add an option to list all validation failures, instead of stopping at
+  the first failure encountered
+  ([#39](https://github.com/Tieske/lua-resty-ljsonschema/pull/39))
+
 ### 1.2.0-2 (24-Oct-2024)
 
  - this rockspec update was lost on 1.2.0 release (see 1.1.6-2 below), applying it again.

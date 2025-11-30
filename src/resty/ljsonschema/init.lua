@@ -1223,11 +1223,10 @@ local _M = {
   -- There is no default implementation: this function must be provided if
   -- resolving external schemas is required. The function signature should be: `function(url)`
   -- @tparam[opt] bool custom.collect_all_errors If set to true, the validator will collect all validation errors
-  -- instead of stopping at the first one. The error message contains:
-  -- * schema_path: Path to the JSON Schema keyword that failed validation.
-  -- * instance_path: Path to the value that failed validation.
-  -- * error: The error message.
-  --
+  -- instead of stopping at the first one. Each error entry contains:
+  -- `schema_path` (path to the JSON Schema keyword that failed validation),
+  -- `instance_path` (path to the value that failed validation), and
+  -- `error` (the error message).
   -- @tparam[opt=false] bool custom.coercion There are cases where incoming data will always be strings. For example
   -- when validating http-headers or query arguments.
   -- For these cases there is this option `coercion`. If you set this flag then
