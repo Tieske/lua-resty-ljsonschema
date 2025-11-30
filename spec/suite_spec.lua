@@ -136,6 +136,13 @@ local options = {
   end,
 }
 
+local options_with_collect_all_errors = {
+  external_resolver = function(url)
+    return external_schemas[url]
+  end,
+  collect_all_errors = true
+}
+
 describe("[JSON schema Draft 4]", function()
 
   for _, descriptor in ipairs(supported) do
@@ -198,6 +205,88 @@ describe("[JSON schema Draft 4]", function()
                         assert.equal(errors[1], err)
                       end
                     end
+                  end
+                  assert.has.error(function()
+                    assert(result, err)
+                  end)
+                end
+              end) -- it
+
+            end -- case skipped
+          end -- for cases
+        end) -- describe
+
+      end -- suite skipped
+    end -- for suite
+  end -- for descriptor
+
+end) -- outer describe
+
+describe("[JSON schema Draft 4 with collect_all_errors]", function()
+
+  for _, descriptor in ipairs(supported) do
+    for _, suite in ipairs(readjson(descriptor)) do
+      local skipped = blacklist[suite.description] or {}
+      if skipped ~= true then
+
+        describe("["..descriptor.."] "..suite.description .. ":", function()
+          local schema = suite.schema
+          local validator -- validator function (function)
+          local validator_code -- validator function as code (string)
+
+          lazy_setup(function()
+            local val = assert(jsonschema.generate_validator(schema, options_with_collect_all_errors))
+            assert.is_function(val)
+            validator = val
+            validator_code = jsonschema.generate_validator_code(schema, options_with_collect_all_errors)
+          end)
+
+          for _, case in ipairs(suite.tests) do
+            if skipped[case.description] then
+              pending(suite.description .. ": " .. case.description, function()end)
+            else
+              local prefix = ""
+              if (suite.description .. ": " .. case.description):find(
+                "--something to run ONLY--", 1, true) then
+                prefix = "#only "
+              end
+              it(prefix .. case.description, function()
+                -- print("validator function in use: \n" .. validator_code)
+                assert(validator_code, "no code was generated")
+                if case.valid then
+                  assert.has.no.error(function()
+                    assert(validator(case.data))
+                  end)
+                else
+                  local result, err
+                  assert.has.no.error(function()
+                    result, err = validator(case.data)
+                  end)
+                  if case.error then
+                    assert.is_table(err)
+                    local flag = false
+                    if type(err) == "table" and #err > 0 then
+                      for _, detailed_err in pairs(err) do
+                        if type(case.error) == "string" then
+                          -- Direct match or substring match
+                          if case.error == detailed_err.error or string.find(case.error, detailed_err.error, 1, true) then
+                            flag = true
+                            break
+                          end
+                        elseif type(case.error) == "table" then
+                          for _, case_err in pairs(case.error) do
+                            if case_err == detailed_err.error or string.find(case_err, detailed_err.error, 1, true) then
+                              flag = true
+                              break
+                            end
+                          end
+                          if flag then
+                            break
+                          end
+                        end
+                      end
+                    end
+                    assert.is_true(flag)
                   end
                   assert.has.error(function()
                     assert(result, err)
