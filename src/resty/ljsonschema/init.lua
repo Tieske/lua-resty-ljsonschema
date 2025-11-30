@@ -800,12 +800,12 @@ generate_validator = function(ctx, schema)
       ctx:stmt(sformat(  '  local itemcount = #%s', ctx:param(1)))
       if schema.minItems then
         ctx:stmt(sformat('  if itemcount < %d then', schema.minItems))
-        ctx:handle_error('    ', sformat('"expect array to have at least %s items"', schema.minItems), '"/minItems"', '""')
+        ctx:handle_error('    ', sformat('"expect array to have at least %s items"', format_number(schema.minItems)), '"/minItems"', '""')
         ctx:stmt(        '  end')
       end
       if schema.maxItems then
         ctx:stmt(sformat('  if itemcount > %d then', schema.maxItems))
-        ctx:handle_error('    ', sformat('"expect array to have at most %s items"', schema.maxItems), '"/maxItems"', '""')
+        ctx:handle_error('    ', sformat('"expect array to have at most %s items"', format_number(schema.maxItems)), '"/maxItems"', '""')
         ctx:stmt(        '  end')
       end
     end
@@ -1051,8 +1051,10 @@ generate_validator = function(ctx, schema)
         -- ctx:stmt("print('quotient:', quotient)")
         ctx:stmt(sformat('  if %s(quotient) ~= quotient or %s == quotient or %s == -quotient then', ctx:libfunc('math.modf'), ctx:libfunc('math.huge'), ctx:libfunc('math.huge')))
       end
+
+      local value = sformat("%s(%s)", ctx:libfunc('lib.format_number'), ctx:param(1))
       ctx:handle_error('    ', sformat('%s("expected %%s to be a multiple of %s", %s)',
-                       ctx:libfunc('string.format'), mof, ctx:param(1)), '"/multipleOf"', '""')
+                       ctx:libfunc('string.format'), format_number(mof), value), '"/multipleOf"', '""')
       ctx:stmt(          '  end')
     end
     ctx:stmt('end') -- if number

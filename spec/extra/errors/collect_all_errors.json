@@ -76,7 +76,7 @@
                 "data": ["aa", "bb", "cc", "dd", "ee", "ff"],
                 "valid": false,
                 "error_entries": [
-                    {"schema_path": "/maxItems", "instance_path": "", "error": "expect array to have at most 5.0 items"}
+                    {"schema_path": "/maxItems", "instance_path": "", "error": "expect array to have at most 5 items"}
                 ]
             }
         ]
@@ -145,7 +145,7 @@
                 "valid": false,
                 "error_entries": [
                     {"schema_path": "/minimum", "instance_path": "", "error": "expected 7 to be greater than 10"},
-                    {"schema_path": "/multipleOf", "instance_path": "", "error": "expected 7.0 to be a multiple of 5.0"}
+                    {"schema_path": "/multipleOf", "instance_path": "", "error": "expected 7 to be a multiple of 5"}
                 ]
             }
         ]
