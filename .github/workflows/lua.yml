@@ -45,9 +45,7 @@ jobs:
     - uses: luarocks/gh-actions-luarocks@v6
 
     - name: dependencies
-      run: |
-        make dev
-        luarocks install lua-cjson
+      run: make dev
 
     - name: test
       run: busted --lua=lua --Xoutput "--color"

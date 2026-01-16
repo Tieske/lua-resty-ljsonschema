@@ -45,9 +45,7 @@ jobs:
         luaRocksVersion: "3.12.2"
 
     - name: dependencies
-      run: |
-        make dev
-        luarocks install lua-cjson
+      run: make dev
 
     - name: test
       run: busted
