@@ -724,7 +724,7 @@ generate_validator = function(ctx, schema)
           ctx:stmt(        '      end')
         else
           -- additional properties are forbidden
-          -- TODO  check instance_path
+          -- instance_path is intentionally empty here as it refers to the object, not a specific property
           ctx:handle_error('      ', '"additional properties forbidden, found " .. prop', '"/additionalProperties"')
         end
         ctx:stmt(          '    end') -- if not (%s[prop] or matched)
@@ -818,7 +818,9 @@ generate_validator = function(ctx, schema)
       -- validations whenever we meet a nil value
       local after = ctx:label()
       for i, ischema in ipairs(schema.items) do
-        -- JSON arrays are zero-indexed: remove 1 for URI path
+        -- Internal schema resolution uses 0-based JSON Pointer format (i-1),
+        -- which gets converted to 1-based Lua indices by store.decodepart().
+        -- Error reporting uses 1-based indexing directly to match Lua conventions.
         local ivalidator = ctx:validator({ 'items', tostring(i-1) }, ischema)
         ctx:stmt(        '  do')
         ctx:stmt(sformat('    local item = %s[%d]', ctx:param(1), i))
@@ -888,8 +890,11 @@ generate_validator = function(ctx, schema)
     ctx:stmt(sformat('if %s == "string" then', datatype))
     ctx:stmt(sformat('  local length = %s(%s)', ctx:libfunc('custom.str_len'), ctx:param(1)))
     ctx:stmt(        '  if not length then') -- allows for overriding and NOT allowing invalid UTF8
-    -- FIXME: schema path
-    ctx:handle_error('    ', '"failed to get string length, invalid utf8"', '""', '""')
+    -- Use the first applicable string validation keyword for the schema path
+    local string_keyword = schema.minLength and '"/minLength"' or 
+                           schema.maxLength and '"/maxLength"' or
+                           schema.pattern and '"/pattern"' or '""'
+    ctx:handle_error('    ', '"failed to get string length, invalid utf8"', string_keyword, '""')
     ctx:stmt(        '  end')
     if schema.minLength then
       ctx:stmt(sformat('  if length and length < %d then', schema.minLength))
@@ -1091,6 +1096,8 @@ generate_validator = function(ctx, schema)
   -- (very naive implementation for now, can be optimized a lot)
   if schema.allOf then
     for i, subschema in ipairs(schema.allOf) do
+      -- Note: validator uses i-1 for 0-based JSON Pointer format (internal schema resolution),
+      -- but error paths use i for 1-based Lua indexing (user-facing error messages)
       local validator = ctx:validator({ 'allOf', tostring(i-1) }, subschema)
       ctx:stmt(        'do')
       ctx:stmt(sformat('  local ok, err = %s(%s)', validator, ctx:param(1)))
@@ -1227,6 +1234,10 @@ local _M = {
   -- `schema_path` (path to the JSON Schema keyword that failed validation),
   -- `instance_path` (path to the value that failed validation), and
   -- `error` (the error message).
+  --
+  -- Note: Paths use 1-based indexing for arrays (e.g., `/allOf/1`, `/items/minLength` with instance `/1`)
+  -- to match Lua's native array indexing, rather than the 0-based indexing of RFC 6901 (JSON Pointer).
+  -- This makes error messages more intuitive for Lua developers.
   -- @tparam[opt=false] bool custom.coercion There are cases where incoming data will always be strings. For example
   -- when validating http-headers or query arguments.
   -- For these cases there is this option `coercion`. If you set this flag then
